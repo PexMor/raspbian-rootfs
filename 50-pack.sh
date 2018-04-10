@@ -12,5 +12,15 @@ if [ $EUID -ne 0 ]; then
     exit 1
 fi
 
-DT=$(date +"%Y%m%d-%H%M%S")
-tar --remove-files --numeric-owner -cJvf "raspbian-$DT.tar.xz" -C "$ROOTFS" .
+NOWVER=$(date +"%Y%m%d-%H%M")
+CFG="$HOME/.github-release.json"
+VERFN="$HOME/.github-release.ver"
+
+if [ -f "$VERFN" ]; then
+    VER=$(cat "$VERFN")
+else
+    VER=$NOWVER
+    echo $VER >"$VERFN"
+fi
+
+tar --remove-files --numeric-owner -cJvf "raspbian-$VER.tar.xz" -C "$ROOTFS" .
