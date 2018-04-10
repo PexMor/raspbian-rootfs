@@ -1,0 +1,6 @@
+raspbian/
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+packages.new
+tmp-*

@@ -1,0 +1,14 @@
+export ROOTFS=raspbian
+export DIST=stretch
+export MIRROR="http://archive.raspbian.org/raspbian"
+export INCLUDE="net-tools,isc-dhcp-client,nano,openssh-server,rsync,wget,curl,apt-utils"
+export LC_ALL=C
+
+APT_SRCS="deb http://archive.raspbian.org/raspbian stretch main contrib non-free"
+APT_SRCS="$APT_SRCS\ndeb-src http://archive.raspbian.org/raspbian stretch main contrib non-free"
+export APT_SRCS
+
+export QEMU_PATH=/usr/bin/qemu-arm-static
+export QEMU_EXECVE=1
+export DEBIAN_FRONTEND=noninteractive
+export QSRC=/usr/bin/qemu-arm-static
