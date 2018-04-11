@@ -138,9 +138,9 @@ echo "--==[ remove cached files"
 rm -rf "$ROOTFS/var/lib/apt/lists"/*
 mkdir "$ROOTFS/var/lib/apt/lists/partial"
 
-echo "--==[ remove /dev and /proc fs"
-rm -rf "$ROOTFS/dev" "$ROOTFS/proc"
-mkdir -p "$ROOTFS/dev" "$ROOTFS/proc"
+# echo "--==[ remove /dev and /proc fs"
+# rm -rf "$ROOTFS/dev" "$ROOTFS/proc"
+# mkdir -p "$ROOTFS/dev" "$ROOTFS/proc"
 
 echo "ROOTFS installation into '$ROOTFS' completed."
 du -sh $ROOTFS
