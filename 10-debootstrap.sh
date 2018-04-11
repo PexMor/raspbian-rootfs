@@ -9,7 +9,8 @@ fi
 
 if [ $EUID -ne 0 ]; then
     echo "This tool must be run as root."
-    exit 1
+    exec sudo /bin/bash "$0" "$@"
+    # exit 1
 fi
 
 echo "Executing debootstrap..."

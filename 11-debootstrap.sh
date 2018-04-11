@@ -9,7 +9,8 @@ fi
 
 if [ $EUID -ne 0 ]; then
     echo "This tool must be run as root."
-    exit 1
+    exec sudo /bin/bash "$0" "$@"
+    # exit 1
 fi
 
 echo "Executing debootstrap..."
@@ -134,6 +135,9 @@ chroot $ROOTFS $QEMU_PATH /bin/sh -c '\
     && apt dist-upgrade -y \
     && symlinks -cors /'
 
+echo "--==[ add few more utils and redirect absolute to relative symlinks"
+chroot $ROOTFS $QEMU_PATH /bin/sh -c 'apt list --installed' >tmp-packages.list
+
 echo "--==[ remove cached files"
 rm -rf "$ROOTFS/var/lib/apt/lists"/*
 mkdir "$ROOTFS/var/lib/apt/lists/partial"
@@ -142,5 +146,5 @@ mkdir "$ROOTFS/var/lib/apt/lists/partial"
 # rm -rf "$ROOTFS/dev" "$ROOTFS/proc"
 # mkdir -p "$ROOTFS/dev" "$ROOTFS/proc"
 
-echo "ROOTFS installation into '$ROOTFS' completed."
+echo "--==[ ROOTFS installation into '$ROOTFS' completed."
 du -sh $ROOTFS
