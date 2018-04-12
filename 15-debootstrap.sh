@@ -7,44 +7,43 @@ if [ "$ROOTFS" == "" ]; then
     exit 1
 fi
 
+if [ ! -f $QSRC ]; then
+    echo "Please install 'apt install qemu-user-static'"
+    exit -1
+fi
+
 if [ $EUID -ne 0 ]; then
     echo "This tool must be run as root."
     exec sudo /bin/bash "$0" "$@"
     # exit 1
 fi
 
-echo "Executing debootstrap..."
+[ -d "$HOME/log" ] || mkdir "$HOME/log"
+# if [ ! -t 1 ] ; then
+# detect run in script
+# fi
+DT=$(date +"%Y%m%d-%H%M%S")
+exec &> >(tee -a "$HOME/log/raspian-rootfs-$DT.log")
+ln -sf "$HOME/log/raspian-rootfs-$DT.log" "$HOME/log/raspian-rootfs-lastest.log"
+
+echo "--==[ remove old rootfs '$ROOTFS'"
+rm -rf $ROOTFS
+
+echo "--==[ execute deboostrap 1st phase"
 debootstrap --arch armhf --foreign --variant minbase --no-check-gpg \
     --include 'apt-utils,symlinks,iproute,iputils-ping' $DIST $ROOTFS $MIRROR
 
-echo "Preparing for ARM emulation..."
-if [ ! -f $QSRC ]; then
-    echo "Please install 'apt install qemu-user-static'"
-    exit -1
-fi
+echo "-==[ copy qemu-static-arm emulator"
+mkdir -p $ROOTFS/usr/bin
 cp $QSRC $ROOTFS/usr/bin
 
+[ -d "$ROOTFS/etc/apt/apt.conf.d" ] || mkdir -p "$ROOTFS/etc/apt/apt.conf.d"
 
-echo "Executing second stage debootstrap..."
-chroot $ROOTFS /debootstrap/debootstrap --second-stage
-
-##################################################################
-##################################################################
-# prevent init scripts from running during install/update
-echo "--==[ make /usr/sbin/policy-rc.d"
-cat > "$ROOTFS/usr/sbin/policy-rc.d" <<'EOF'
-#!/bin/sh
-
-# For most Docker users, "apt-get install" only happens during "docker build",
-# where starting services doesn't work and often fails in humorous ways. This
-# prevents those failures by stopping the services from attempting to start.
-
-exit 101
-EOF
-chmod +x "$ROOTFS/usr/sbin/policy-rc.d"
 
 echo "--==[ make autoclean script /etc/apt/apt.conf.d/docker-clean"
+
 aptGetClean='"rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true";'
+
 cat > "$ROOTFS/etc/apt/apt.conf.d/docker-clean" <<-EOF
 # Since for most Docker users, package installs happen in "docker build" steps,
 # they essentially become individual layers due to the way Docker handles
@@ -68,7 +67,7 @@ Dir::Cache::srcpkgcache "";
 EOF
 
 echo "--==[ no laguages /etc/apt/apt.conf.d/docker-no-languages"
-cat > "$rootfsDir/etc/apt/apt.conf.d/docker-no-languages" <<-'EOF'
+cat > "$ROOTFS/etc/apt/apt.conf.d/docker-no-languages" <<-'EOF'
 # In Docker, we don't often need the "Translations" files, so we're just wasting
 # time and space by downloading them, and this inhibits that.  For users that do
 # need them, it's a simple matter to delete this file and "apt-get update". :)
@@ -77,7 +76,7 @@ Acquire::Languages "none";
 EOF
 
 echo "--==[ gzipped indexes /etc/apt/apt.conf.d/docker-gzip-indexes"
-cat > "$rootfsDir/etc/apt/apt.conf.d/docker-gzip-indexes" <<-'EOF'
+cat > "$ROOTFS/etc/apt/apt.conf.d/docker-gzip-indexes" <<-'EOF'
 # Since Docker users using "RUN apt-get update && apt-get install -y ..." in
 # their Dockerfiles don't go delete the lists files afterwards, we want them to
 # be as small as possible on-disk, so we explicitly request "gz" versions and
@@ -92,12 +91,32 @@ Acquire::CompressionTypes::Order:: "gz";
 EOF
 
 echo "--==[ prevent installation of unnecessary packages"
-cat > $ROOTFS/etc/apt/apt.conf <<-EOF
+cat > $ROOTFS/etc/apt/apt.conf.d/docker-no-recommends <<-EOF
 APT::Install-Recommends "0";
 APT::Install-Suggests "0";
 EOF
-##################################################################
-##################################################################
+
+#######################################################################
+
+echo "--==[ execute deboostrap 2nd phase"
+chroot $ROOTFS /debootstrap/debootstrap --second-stage
+
+#######################################################################
+
+# prevent init scripts from running during install/update
+echo "--==[ make /usr/sbin/policy-rc.d"
+[ -d "$ROOTFS/usr/sbin" ] || mkdir -p "$ROOTFS/usr/sbin"
+cat > "$ROOTFS/usr/sbin/policy-rc.d" <<'EOF'
+#!/bin/sh
+
+# For most Docker users, "apt-get install" only happens during "docker build",
+# where starting services doesn't work and often fails in humorous ways. This
+# prevents those failures by stopping the services from attempting to start.
+
+exit 101
+EOF
+chmod +x "$ROOTFS/usr/sbin/policy-rc.d"
+
 
 echo "Configuring ROOTFS..."
 echo -e $APT_SRCS > $ROOTFS/etc/apt/sources.list
@@ -136,15 +155,29 @@ chroot $ROOTFS $QEMU_PATH /bin/sh -c '\
     && symlinks -cors /'
 
 echo "--==[ add few more utils and redirect absolute to relative symlinks"
-chroot $ROOTFS $QEMU_PATH /bin/sh -c 'apt list --installed' >tmp-packages.list
+chroot $ROOTFS $QEMU_PATH /bin/sh -c 'apt list --installed' >installed.new
+
+diff -u installed.list installed.new | tail -n+4 >tmp-installed.diff
+
+echo
+echo "Packages added :"
+echo "----------------"
+grep "^\+" tmp-installed.diff | cut -c2- | tee tmp-installed.add
+echo
+echo "Packages removed : "
+echo "------------------"
+grep "^\-" tmp-installed.diff | cut -c2- | tee tmp-installed.del
 
 echo "--==[ remove cached files"
 rm -rf "$ROOTFS/var/lib/apt/lists"/*
-mkdir "$ROOTFS/var/lib/apt/lists/partial"
+mkdir -p "$ROOTFS/var/lib/apt/lists/partial"
 
 # echo "--==[ remove /dev and /proc fs"
 # rm -rf "$ROOTFS/dev" "$ROOTFS/proc"
 # mkdir -p "$ROOTFS/dev" "$ROOTFS/proc"
+
+# echo "--==[ remove qemu-static-arm binary"
+# rm -f $ROOTFS/$QSRC
 
 echo "--==[ ROOTFS installation into '$ROOTFS' completed."
 du -sh $ROOTFS

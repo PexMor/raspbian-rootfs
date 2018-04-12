@@ -3,4 +3,5 @@ raspbian/
 *.tar.xz
 *.tar.bz2
 packages.new
+installed.new
 tmp-*

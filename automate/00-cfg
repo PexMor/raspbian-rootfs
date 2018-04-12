@@ -1,0 +1,31 @@
+#!/bin/bash
+
+NOWVER=$(date +"%Y%m%d-%H%M")
+CFG="$HOME/.github-release.json"
+VERFN="$HOME/.github-release.ver"
+
+if [ -f "$VERFN" ]; then
+    VER=$(cat "$VERFN")
+else
+    VER=$NOWVER
+    echo $VER >"$VERFN"
+fi
+
+WDIR=$(jq -r .wdir "$CFG" | envsubst)
+OWNER=$(jq -r .owner "$CFG")
+REPO=$(jq -r .repo "$CFG")
+GHAT=$(jq -r .api "$CFG")
+TAG=$VER
+FN="raspbian-$VER.tar.xz"
+
+# borrowed from https://gist.github.com/stefanbuck/ce788fee19ab6eb0b4447a85fc99f447
+
+# Define variables.
+GH_API="https://api.github.com"
+GH_REPO="$GH_API/repos/$OWNER/$REPO"
+GH_TAGS="$GH_REPO/releases/tags/$TAG"
+AUTH="Authorization: token $GHAT"
+
+if [[ "$TAG" == 'LATEST' ]]; then
+  GH_TAGS="$GH_REPO/releases/latest"
+fi

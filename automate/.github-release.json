@@ -1,0 +1,6 @@
+{
+    "api": "-put-here-the-api-key",
+    "wdir": "$HOME/the-working-directory-envsubs-applied-here",
+    "owner": "github-owner-name-here",
+    "repo": "github-repo-here"
+}
