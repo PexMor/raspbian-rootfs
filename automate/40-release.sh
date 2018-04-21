@@ -26,17 +26,17 @@ DELNO=$[1*DELNO]
 ADDNO=$(cat $WDIR/tmp-$CFN.add | wc -l)
 ADDNO=$[1*ADDNO]
 
-echo -e "There was $ADDNO added and $DELNO removed compared to previous release.\n" >$RN
+echo -e "There was $ADDNO added and $DELNO removed compared to previous release.\n" >>$RN
 
 if [ -s "$WDIR/tmp-$CFN.add" ]; then
-    echo -e "\n#### Packages added\n" >$RN
+    echo -e "\n#### Packages added\n" >>$RN
     echo '```' >>$RN
     cat $WDIR/tmp-$CFN.add >>$RN
     echo '```' >>$RN
 fi
 
 if [ -s "$WDIR/tmp-$CFN.del" ]; then
-    echo -e "\n#### Packages removed\n" >$RN
+    echo -e "\n#### Packages removed\n" >>$RN
     echo '```' >>$RN
     cat $WDIR/tmp-$CFN.del >>$RN
     echo '```' >>$RN
