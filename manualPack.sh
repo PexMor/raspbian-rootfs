@@ -8,7 +8,7 @@ if [ "$ROOTFS" == "" ]; then
 fi
 
 if [ $EUID -ne 0 ]; then
-    echo "This tool must be run as root."
+    echo "This tool must be run as root (switching to root via exec)"
     exec sudo /bin/bash "$0" "$@"
     # exit 1
 fi
